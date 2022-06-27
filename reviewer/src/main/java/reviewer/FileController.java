@@ -1,69 +1,62 @@
 package reviewer;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Controller
 public class FileController {
+    @Autowired
+    private Environment env;
 
     @GetMapping(value = "/")
-    public String directory(Model model) {
-        File dir = new File("C:");
-        List<reviewer.Files> list = new ArrayList<>();
-        for (File file : dir.listFiles()) {
-            list.add(new reviewer.Files(file.getName(), file.isDirectory()));
+    public String directory(Model model, @RequestParam(value = "path", required = false) String path, @RequestParam(value = "next", required = false) String next) {
+        String root= env.getProperty("root",String.class);
+        //Определили путь, который нам нужен
+        if (path == null || "null".equalsIgnoreCase(path))  {
+            path = root + File.separator;
+        }
+        if (next != null) {
+            path += next + File.separator;
         }
 
-        model.addAttribute("slash", "/");
-        model.addAttribute("link", "C:");
-        model.addAttribute("isEmpty", list.isEmpty());
-        model.addAttribute("files", list);
-
-        return "home";
-    }
-
-    @GetMapping(value = "forward")
-    public String forward(@RequestParam(value = "path") String path, Model model) {
-
+        //Проверили, что путь существует и что путь ведёт к директории, а не файлу
         File dir = new File(path);
-        List<reviewer.Files> list = new ArrayList<>();
-        for (File file : dir.listFiles()) {
-            list.add(new reviewer.Files(file.getName(), file.isDirectory()));
+        if (!dir.exists() || !dir.isDirectory()) {
+            throw new HttpClientErrorException(HttpStatus.NOT_FOUND);
+        }
+        //Получаем все файлы
+        File[] files = dir.listFiles();
+        if (files == null) {
+            throw new HttpClientErrorException(HttpStatus.NOT_FOUND);
         }
 
-        model.addAttribute("slash", "/");
-        model.addAttribute("link", path);
-        model.addAttribute("isEmpty", list.isEmpty());
-        model.addAttribute("files", list);
-
-        return "home";
-    }
-
-    @GetMapping(value = "back")
-    public String back(@RequestParam(value = "path") String path, Model model) {
-
-        String[] pathArr = path.split("/");
-        String link = pathArr[0];
-        for (int i=1; i<pathArr.length-1; i++) {
-            link += "/" + pathArr[i];
+        //Преобразуем в наш формат
+        List<FileModel> visible = new ArrayList<>();
+        for (File file : files) {
+            visible.add(new FileModel(file));
         }
 
-        File dir = new File(link);
-        List<reviewer.Files> list = new ArrayList<>();
-        for (File file : dir.listFiles()) {
-            list.add(new reviewer.Files(file.getName(), file.isDirectory()));
+        if (dir.getParent()!=null) {
+            //Путь к предыдущей директории
+            model.addAttribute("prev", dir.getParent() + File.separator);
         }
-
-        model.addAttribute("slash", "/");
-        model.addAttribute("link", link);
-        model.addAttribute("isEmpty", list.isEmpty());
-        model.addAttribute("files", list);
+        //Текущая папка
+        model.addAttribute("dir", path);
+        //Список файлов
+        model.addAttribute("files", visible);
 
         return "home";
     }
