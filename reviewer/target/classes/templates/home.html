@@ -1,0 +1,31 @@
+<!DOCTYPE HTML>
+<html xmlns:th="https://www.thymeleaf.org">
+<head>
+    <title th:text="${link}"></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+
+<body>
+
+<table>
+    <td>
+        <a th:href="@{back?path={l}(l=${link})}">...Назад</a>
+    </td>
+    <div th:if="${not isEmpty}">
+        <tr th:each="file: ${files}">
+            <td>
+                <div th:if="${file.link}">
+                    <a th:href="@{forward?path={l}(l=${link+slash+file.name})}"
+                       th:text="${file.name}"></a>
+                </div>
+                <div th:if="${not file.link}">
+                    <div th:text="${file.name}"></div>
+                </div>
+            </td>
+
+        </tr>
+    </div>
+</table>
+
+</body>
+</html>
